@@ -207,14 +207,6 @@ namespace Wpf2Html5.TypeSystem.Items
             Types.AddItem(ltype);
         }
 
-        public virtual void AddDepdendency(ITypeItem dependent, ITypeItem target)
-        {
-            if (null != ParentTypes)
-            {
-                ParentTypes.AddDepdendency(dependent, target);
-            }
-        }
-
         #endregion
 
         #region IVariableContext

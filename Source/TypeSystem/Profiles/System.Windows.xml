@@ -1,6 +1,44 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <profile script-assembly="Wpf2Html5.StockObjects" script-path="Scripts">
-  <source namespace="System.Windows.Input" >
+  <source namespace="System.Windows.Input" assembly="System" >
     <type name="ICommand" />
+  </source>
+  <source namespace="System.Windows" assembly="WindowsBase">
+    <type name="DependencyObject" >
+      <script name="TypeSystem" />
+      <script name="DataTypes" />
+      <script name="Delegate" />
+      <script name="Binding" />
+      <script name="InputBinding" />
+    </type>
+    <type name="DependencyProperty" />
+    <type name="DependencyPropertyChangedEventArgs" />
+  </source>
+  <source namespace="System.Windows" assembly="PresentationFramework">
+    <type name="DataTemplate" >
+      <script name="TemplateFactory" />
+    </type>
+  </source>
+    <source namespace="System.Windows.Controls" assembly="PresentationFramework" base="Control">
+      <type name="Control" >
+        <script name="ControlFactory" />
+      </type>
+    <type name="TextBlock" />
+    <type name="TextBox" />
+    <type name="Button" />
+    <type name="StackPanel" />
+    <type name="ContentPresenter" />
+    <type name="ItemsControl" />
+    <type name="ComboBox" base="ItemsControl" />
+    <type name="DockPanel" />
+    <type name="Border" />
+    <type name="Image" />
+    <type name="CheckBox" />
+    <type name="UserControl" />
+  </source>
+  <source namespace="System.Windows.Documents" assembly="PresentationFramework" base="System.Windows.Controls.Control">
+    <type name="Hyperlink" />
+    <type name="InlineUIContainer" />
+    <type name="Run" />
   </source>
 </profile>

@@ -196,7 +196,7 @@ Binding.prototype.update = function (value) {
     try {
         this.isupdating = true;
 
-        trace("binding update source: " + parent.source["id"]);
+        // trace("binding update source: " + parent.source["id"]);
 
         if (!!parent.source) {
             SetPropertyValue(parent.source, e.name, value);
@@ -221,7 +221,12 @@ var BindingOperations = {
 
     },
     ClearAllBindings: function (target) {
-        target.clearallbindings();
+        if (target.clearallbindings !== undefined) {
+            target.clearallbindings();
+        }
+        else {
+            trace("WARNING: type " + target.$type + " has not clearbindings");
+        }
     }
 }
 
@@ -330,7 +335,7 @@ BindingObject.prototype.SetTargetValue = function (value) {
 
 BindingObject.prototype.UpdateSourceValue = function () {
     var value = GetPropertyValue(this.target, this.prop);
-    trace("from " + this.toString() + " update source value: " + value);
+    // trace("from " + this.toString() + " update source value: " + value);
     this.binding.update(value);
 }
 

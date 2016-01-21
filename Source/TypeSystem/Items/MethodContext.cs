@@ -65,14 +65,6 @@ namespace Wpf2Html5.TypeSystem.Items
             return _parent.ResolveLType(name);
         }
 
-        public void AddDepdendency(ITypeItem dependent, ITypeItem target)
-        {
-            if (_parent is ITypeItem)
-            {
-                _parent.AddDepdendency(_parent as ITypeItem, target);
-            }
-        }
-
         public ITypeItem TranslateRType(Type rtype, TranslateOptions options)
         {
             return Parent.TranslateRType(rtype, options);

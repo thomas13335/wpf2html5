@@ -18,8 +18,8 @@ namespace Wpf2Html5.TypeSystem.Items
         private Type _rtype;
         private IVariableContext _lbase;
         private Variable _thisvar;
-        private List<ITypeItem> _typedependencies = new List<ITypeItem>();
         private ITypeItem _baseclass;
+        private bool _preparing;
 
         #endregion
 
@@ -32,8 +32,6 @@ namespace Wpf2Html5.TypeSystem.Items
         public bool IsConstructed { get { return !_rtype.IsEnum && !_rtype.IsValueType; } }
 
         public override Type RType { get { return _rtype; } }
-
-        public override IEnumerable<ITypeItem> Dependencies { get { return _typedependencies; } }
 
         public override ITypeItem BaseType { get { return _baseclass; } }
 
@@ -132,34 +130,6 @@ namespace Wpf2Html5.TypeSystem.Items
             return result;
         }
 
-        public override void AddDepdendency(ITypeItem dependent, ITypeItem target)
-        {
-            /*if(target is NativeTypeRef)
-            {
-                // don't need these
-                return;
-            }
-            else */
-            if(target is Enumeration)
-            {
-                // why?
-                return;
-            }
-
-            if (dependent == this)
-            {
-                if (!_typedependencies.Contains(target))
-                {
-                    // Trace("class '{0}' add dependency '{1}'.", this, target);
-                    _typedependencies.Add(target);
-                }
-            }
-            else
-            {
-                base.AddDepdendency(dependent, target);
-            }
-        }
-
         public override IDeclarationContext GetTypeDeclarationContext()
         {
             return Parent.GetTypeDeclarationContext();
@@ -168,38 +138,62 @@ namespace Wpf2Html5.TypeSystem.Items
         public override bool Prepare()
         {
             var result = true;
-            if(GStatus == TypeGenerationStatus.source)
-            {
-                foreach(var d in Dependencies)
-                {
-                    if(!d.Prepare())
-                    {
-                        Log.Trace("class {0} failed to prepare ({1}).", d.ID, d.GStatus);
-                        result = false;
-                    }
-                }
-            }
-            else if(GStatus != TypeGenerationStatus.convert)
-            {
-                result = false;
-            }
 
-            if(result)
+            try
             {
-                if (RType.IsInterface)
+                if (_preparing)
                 {
-                    // don't need any representation of an interface.
-                    GStatus = TypeGenerationStatus.cloaked;
+                    // don't recurse into cycles
+                    result = true;
                 }
                 else
                 {
-                    GStatus = TypeGenerationStatus.convert;
+                    _preparing = true;
+                    if (GStatus == TypeGenerationStatus.source)
+                    {
+                        GStatus = TypeGenerationStatus.preparing;
+                        foreach (var d in Dependencies
+                            .Select(g => g.Target)
+                            .Where(g => g.GStatus == TypeGenerationStatus.source))
+                        {
+                            if (!d.Prepare())
+                            {
+                                Log.Trace("class {0} failed to prepare ({1}).", d, d.GStatus);
+                                result = false;
+                            }
+                        }
+                    }
+                    else if(GStatus == TypeGenerationStatus.preparing)
+                    {
+
+                    }
+                    else if (GStatus != TypeGenerationStatus.convert)
+                    {
+                        result = false;
+                    }
+
+                    if (result)
+                    {
+                        if (RType.IsInterface)
+                        {
+                            // don't need any representation of an interface.
+                            GStatus = TypeGenerationStatus.cloaked;
+                        }
+                        else
+                        {
+                            GStatus = TypeGenerationStatus.convert;
+                        }
+                    }
+                    else if (GStatus != TypeGenerationStatus.failed)
+                    {
+                        Log.Trace("class {0} failed.", ID);
+                        GStatus = TypeGenerationStatus.failed;
+                    }
                 }
             }
-            else if(GStatus != TypeGenerationStatus.failed)
+            finally
             {
-                Log.Trace("class {0} failed.", ID);
-                GStatus = TypeGenerationStatus.failed;
+                _preparing = false;
             }
 
             return result;
@@ -231,7 +225,7 @@ namespace Wpf2Html5.TypeSystem.Items
                     throw new Exception("base type [" + basetype.GetRName() + "] is not defined.");
                 }
 
-                AddDepdendency(this, _baseclass);
+                AddDepdendency(_baseclass, DependencyLevel.Constructor);
             }
         }
 
@@ -277,24 +271,30 @@ namespace Wpf2Html5.TypeSystem.Items
                 .Where(m => m.DeclaringType == _rtype))
             {
                 string name = memberinfo.Name;
+                ITypeItem ltype;
                 // TraceTarget.Trace("{0,-20} {1}", name, memberinfo.GetType().Name);
 
                 if (memberinfo is FieldInfo)
                 {
                     var fieldinfo = memberinfo as FieldInfo;
                     var rtype = fieldinfo.FieldType;
-
-                    AddVariable(name, MapType(rtype));
+                    ltype = MapType(rtype);
+                    AddVariable(name, ltype);
                 }
                 else if (memberinfo is MethodInfo)
                 {
-                    ExtractMethod(memberinfo as MethodInfo);
+                    var methodinfo = (MethodInfo)memberinfo;
+                    ltype = MapType(methodinfo.ReturnType);
+                    var method = new Method(this, methodinfo.Name, ltype);
+                    AddVariable(method);
+
                 }
                 else if (memberinfo is PropertyInfo)
                 {
                     var propinfo = memberinfo as PropertyInfo;
                     var rtype = propinfo.PropertyType;
-                    AddVariable(new Property(this, name, MapType(rtype)));
+                    ltype=MapType(rtype);
+                    AddVariable(new Property(this, name, ltype));
                 }
                 else if (memberinfo is ConstructorInfo)
                 {
@@ -320,6 +320,11 @@ namespace Wpf2Html5.TypeSystem.Items
                     throw new Exception("variable '" + name + "' not resolved in " + this + ".");
                 }
 
+                if(null != ltype)
+                {
+                    AddDepdendency(ltype, DependencyLevel.Lowest);
+                }
+
                 /*if (null != item.LType)
                 {
                     AddDepdendency(this, item.LType);
@@ -335,15 +340,6 @@ namespace Wpf2Html5.TypeSystem.Items
 
         private void ExtractMethod(MethodInfo methodinfo)
         {
-            ITypeItem returnltype = null;
-            if (null != methodinfo.ReturnType)
-            {
-                returnltype = TranslateRType(methodinfo.ReturnType, TranslateOptions.None);
-            }
-
-            var method = new Method(this, methodinfo.Name, returnltype);
-
-            AddVariable(method);
         }
 
         #endregion

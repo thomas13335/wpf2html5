@@ -399,6 +399,7 @@ namespace Wpf2Html5
         {
             if (!_codegenerated)
             {
+                Log.Trace("preparing ...");
                 _cs2js.PrepareCode();
 
                 Log.Trace("generating code ...");

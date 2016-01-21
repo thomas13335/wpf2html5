@@ -11,6 +11,8 @@
     <type name="Dictionary`2" />
   </source>
   <source namespace="System.Collections.ObjectModel" assembly="System" >
-    <type name="ObservableCollection`1" />
+    <type name="ObservableCollection`1" >
+      <script name="ArrayEnumerator" />
+    </type>
   </source>
 </profile>

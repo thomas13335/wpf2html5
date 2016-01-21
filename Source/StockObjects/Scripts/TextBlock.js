@@ -13,7 +13,19 @@ TextBlock.prototype.$static = {
     TextProperty: {}
 }
 
+TextBlock.prototype.set_Text = function (value) {
+    this.SetValue("Text", value);
+}
+
+TextBlock.prototype.get_Text = function (value) {
+    this.GetValue("Text");
+}
+
 function TextBlock_SetText(ctrl, value) {
+
+    if (value === undefined || value == null)
+        value = "";
+
     while (ctrl.firstChild !== null) {
         ctrl.removeChild(ctrl.firstChild);
     }
@@ -21,9 +33,7 @@ function TextBlock_SetText(ctrl, value) {
     ctrl.appendChild(document.createTextNode(value));
 }
 
-TextBlock.prototype.set_Text = function (value) {
-    if (value === undefined || value == null)
-        value = "";
-
-    TextBlock_SetText(this.ctrl, value);
+TextBlock.prototype.OnPropertyChanged = function (e) {
+    TextBlock_SetText(this.ctrl, this.GetValue("Text"));
 }
+

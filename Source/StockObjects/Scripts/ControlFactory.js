@@ -63,6 +63,7 @@ var ControlFactory = {
             // trace("[getcontrolwrapper] legacy path for '" + ctrl.tagName + "' ...");
             switch (ctrl.tagName) {
                 case "SPAN":
+                    trace("## legacy span.");
                     result = new TextBlock(ctrl);
                     break;
 

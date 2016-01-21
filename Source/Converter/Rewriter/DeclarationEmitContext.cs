@@ -49,7 +49,7 @@ namespace Wpf2Html5.Converter
 
         public void AddItemReferences()
         {
-            foreach(var d in LType.Dependencies)
+            foreach(var d in LType.Dependencies.Select(e => e.Target))
             {
                 TriggerItemReferenced(d);
             }

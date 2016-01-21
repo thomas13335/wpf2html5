@@ -28,7 +28,7 @@ namespace Wpf2Html5
         #region Trace Flags
 
         public static bool ShowTypeSystem = false;
-        public static bool ShowCodeConversion = false;
+        public static bool ShowCodeGeneration = false;
         public static bool ShowTypeResolution = false;
         public static bool ShowVerbose = false;
         public static bool ShowClassDependencies = false;
@@ -38,7 +38,7 @@ namespace Wpf2Html5
         public static bool ShowTemplates = false;
         public static bool ShowScripts = false;
         public static bool ShowDataTemplateHtml;
-        public static bool ShowProfileLoader;
+        public static bool ShowProfileLoader = false;
 
         #endregion
 
@@ -59,7 +59,7 @@ namespace Wpf2Html5
         /// <param name="args">The arguments.</param>
         public static void Warning(string format, params object[] args)
         {
-            Emit(Severity.warning, format, args);
+            Emit(Severity.warning, "warning: " + format, args);
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace Wpf2Html5
         /// <param name="args">The arguments.</param>
         public static void Error(string format, params object[] args)
         {
-            Emit(Severity.error, format, args);
+            Emit(Severity.error, "error: " + format, args);
         }
 
         #region Private Methods

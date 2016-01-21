@@ -30,7 +30,7 @@ namespace Wpf2Html5
         private ITypeContext _context;
         private List<Assembly> _assemblies = new List<Assembly>();
         private JScriptBuilder _declarations = new JScriptBuilder();
-        private List<ITypeItem> _nativetypes = new List<ITypeItem>();
+        private List<string> _nativescripts = new List<string>();
         private List<DeclarationEmitContext> _output = new List<DeclarationEmitContext>();
         private bool _preambleemitted;
 
@@ -39,6 +39,11 @@ namespace Wpf2Html5
         /// </summary>
         private Dictionary<string, ITypeItem> _classes = new Dictionary<string, ITypeItem>();
 
+        private Queue<ITypeItem> _classqueue = new Queue<ITypeItem>();
+
+        private HashSet<string> _classesref = new HashSet<string>();
+
+        private ITypeItem CurrentClass { get; set; }
 
         #endregion
 
@@ -82,7 +87,7 @@ namespace Wpf2Html5
 
         private static void Trace(string format, params object[] args)
         {
-            if (Log.ShowCodeConversion)
+            if (Log.ShowCodeGeneration)
             {
                 Log.Trace("cs2js: " + format, args);
             }
@@ -90,7 +95,7 @@ namespace Wpf2Html5
 
         private static void TraceEmit(string format, params object[] args)
         {
-            if (Log.ShowCodeConversion)
+            if (Log.ShowCodeGeneration)
             {
                 Log.Trace("cs2js: " + format, args);
             }
@@ -224,27 +229,43 @@ namespace Wpf2Html5
                     ltype.SetSourceNode(dsc);
 
                     // register this class
-                    _classes[qname] = ltype;
+                    ClassToQueue(ltype);
                 }
             }
         }
 
         #endregion
 
+
         public void PrepareCode()
         {
-            foreach(var ltype in _classes.Values)
+            while(_classqueue.Count > 0)
             {
+                var ltype = _classqueue.Dequeue();
                 try
                 {
+                    var dsc = ltype.SourceNode as DeclarationSourceContext;
+
                     if (!ltype.Prepare())
                     {
-                        var dsc = ltype.SourceNode as DeclarationSourceContext;
                         if (null != dsc)
                         {
                             throw new RewriterException(dsc.Declaration, ErrorCode.PreparationError,
                                 "class [" + ltype.ID + "] preparation error.");
                         }
+                        else
+                        {
+                            throw new Exception("unable to extract DSC from ltype " + ltype + ".");
+                        }
+                    }
+
+                    if (null != dsc && ltype.GStatus == TypeGenerationStatus.convert)
+                    {
+                        // preparation successful, generate code
+                        EmitClass(ltype);
+
+                        // produces the final dependencies?
+                        ItemReferenced(ltype);
                     }
                 }
                 catch(Exception ex)
@@ -261,7 +282,8 @@ namespace Wpf2Html5
         {
             EmitPreamle();
 
-            // generate code for classes individually, this may add type references.
+            // generate code for classes individually.
+            // this must not add type references anymore.
             foreach(var ltype in SortClassesByDependency())
             {
                 try
@@ -269,7 +291,19 @@ namespace Wpf2Html5
                     //if (null != ltype.SourceNode)
                     if(ltype.GStatus == TypeGenerationStatus.convert)
                     {
-                        EmitClass(ltype);
+                        // EmitClass(ltype);
+                        var dgc = (DeclarationEmitContext)ltype.EmitContext;
+
+                        if (Log.ShowClassDependencies || Log.ShowCodeGeneration)
+                        {
+                            Log.Trace("emit class [{0}] ...", ltype.ID);
+                        }
+
+                        RewriteDeclaration(dgc.Writer);
+                    }
+                    else if(ltype.GStatus == TypeGenerationStatus.external)
+                    {
+                        EmitNativeScripts(ltype);
                     }
                     else if(ltype.GStatus == TypeGenerationStatus.failed)
                     {
@@ -296,46 +330,57 @@ namespace Wpf2Html5
                 }
             }
 
-            // emit type system scripts
+            // emit type system scripts first
             var root = ModuleFactory.System;
             foreach (var script in root.ScriptReferences)
             {
                 EmitNativeScript(script);
             }
+        }
 
-            // emit native scripts referenced in the code
-            var scriptrefs = new HashSet<string>();
-            foreach(var native in _nativetypes)
+        /// <summary>
+        /// Queues the specified ltype for code generation and associates dependencies.
+        /// </summary>
+        /// <param name="ltype">The type item to enqueue.</param>
+        public void ItemReferenced(ITypeItem ltype)
+        {
+            if(null != CurrentClass)
             {
-                foreach(var script in native.ScriptReferences)
-                {
-                    if(!scriptrefs.Contains(script.Key))
-                    {
-                        scriptrefs.Add(script.Key);
-
-                        EmitNativeScript(script);
-                    }
-                }
             }
 
-            // emit the code ...
-            foreach(var dgc in _output)
+            if(ltype.GStatus == TypeGenerationStatus.initial || ltype.GStatus == TypeGenerationStatus.source)
             {
-                RewriteDeclaration(dgc.Writer);
+                // later
+                return;
+            }
+
+            ClassToQueue(ltype);
+
+            if(!_classesref.Contains(ltype.ID))
+            {
+                _classesref.Add(ltype.ID);
+
+                foreach (var dependency in ltype.Dependencies.Select(e => e.Target))
+                {
+                    ItemReferenced(dependency);
+                }
+
             }
         }
 
-        public void ItemReferenced(ITypeItem ltype)
+        private void ClassToQueue(ITypeItem ltype)
         {
-            if(!_nativetypes.Contains(ltype))
+            if (!_classes.ContainsKey(ltype.ID))
             {
-                _nativetypes.Add(ltype);
+                _classes.Add(ltype.ID, ltype);
+                _classqueue.Enqueue(ltype);
             }
         }
 
         public bool ItemReferenced(string typename)
         {
             var type = _context.ResolveLType(typename);
+
             if (null == type)
             {
                 return false;
@@ -362,48 +407,72 @@ namespace Wpf2Html5
 
             while(classes.Any())
             {
-                int processed = 0;
-                foreach(var cls in classes.ToArray())
+                for (int j = 0; j < (int)DependencyLevel.Limit; ++j)
                 {
-                    bool flag = true;
-                    foreach(var dep in cls.Dependencies)
+                    int processed = 0;
+                    foreach (var cls in classes.ToArray())
                     {
-                        TraceDependency("class {0} -> {1}", cls, dep);
-
-                        if (!dep.DoNotGenerate)
+                        bool flag = true;
+                        foreach (var dep in cls.Dependencies
+                            .Where(e => e.Level >= (DependencyLevel)j)
+                            .Select(e => e.Target))
                         {
+                            TraceDependency("class {0} -> {1}", cls, dep);
+
                             if (!dict.ContainsKey(dep.ID))
                             {
                                 flag = false;
                                 break;
                             }
                         }
+
+                        if (!flag) continue;
+
+                        dict[cls.ID] = cls;
+                        result.Add(cls);
+                        classes.Remove(cls);
+
+                        Trace("  {0}", cls.ID);
+
+                        processed++;
                     }
 
-                    if (!flag) continue;
-
-                    dict[cls.ID] = cls;
-                    result.Add(cls);
-                    classes.Remove(cls);
-
-                    Trace("  {0}", cls.ID);
-
-                    processed++;
-                }
-
-                if(0 == processed)
-                {
-                    foreach(var cls in classes)
+                    if (0 == processed)
                     {
-                        Trace("circular dependency class [{0}]:", cls.ID);
-                        foreach(var dep in cls.Dependencies)
+                        var atlimit = j + 1 == (int)DependencyLevel.Limit;
+
+                        if (Log.ShowCodeGeneration || Log.ShowClassDependencies || atlimit)
                         {
-                            Trace("  -> [{0}]", dep.ID);
+                            var sb = new StringBuilder();
+                            foreach (var cls in classes)
+                            {
+                                sb.AppendFormat("  class [{0}]:", cls.ID);
+                                sb.AppendLine();
+                                foreach (var dep in cls.Dependencies)
+                                {
+                                    sb.AppendFormat("    -> [{0,-40}] {1}", dep.Target.CodeName, dep.Level);
+                                    sb.AppendLine();
+                                }
+                            }
+
+                            Log.Trace("circular dependency level {0}:\n{1}", (DependencyLevel)j, sb);
+                        }
+
+                        if (atlimit)
+                        {
+                            throw new Exception("circular dependency: " + classes.Select(c => c.ID).ToSeparatorList());
                         }
                     }
-
-                    throw new Exception("circular dependency: " + classes.Select(c => c.ID).ToSeparatorList());
+                    else
+                    {
+                        // exit inner (level) loop
+                        break;
+                    }
                 }
+            }
+
+            foreach(var e in result)
+            {
             }
 
             return result;
@@ -741,104 +810,122 @@ namespace Wpf2Html5
         }
 
         /// <summary>
-        /// Generates code for a given class type.
+        /// Generates code for a given class type and associates it with the type item.
         /// </summary>
         /// <param name="ltype">The class type item to generate.</param>
+        /// <remarks>
+        /// <para>The DeclarationEmitContext will be set as the EmitContext.</para></remarks>
         private void EmitClass(ITypeItem ltype)
         {
-            Trace("emit class [{0}] ...", ltype.ID);
-
-            var dsc = (DeclarationSourceContext)ltype.SourceNode;
-            var cls = (ClassDeclarationSyntax)dsc.ClassDeclaration;
-
-            // create emit context
-            var dgc = new DeclarationEmitContext(ltype, dsc);
-            dgc.OnItemReferenced = ItemReferenced;
-
-            dgc.AddItemReferences();
-
-            // look for automatic properties
-            var autoprops = cls.Members
-                .OfType<PropertyDeclarationSyntax>()
-                .Where(IsAutomaticProperty)
-                .Select(ap => ap.Identifier.ToString());
-
-
-
-            EmitConstructor(dgc, autoprops);
-
-            var classmembers = ltype as IVariableContext;
-
-            // add member methods and properties ...
-            foreach (var member in cls.Members)
+            if (Log.ShowClassDependencies || Log.ShowCodeGeneration)
             {
-                if (member is MethodDeclarationSyntax)
-                {
-                    var method = member as MethodDeclarationSyntax;
-                    var name = method.Identifier.ToString();
-                    var v = classmembers.GetVariable(name);
-                    if (!v.DoNotGenerate)
-                    {
-                        EmitMethod(dgc, method);
-                    }
-                }
-                else if (member is PropertyDeclarationSyntax)
-                {
-                    var prop = (PropertyDeclarationSyntax)member;
-                    var propname = prop.Identifier.ToString();
+                Log.Trace("generate class [{0}] ...", ltype.ID);
+            }
 
-                    /*Trace("property {0}:", propname);
-                    SyntaxTreeHelper.PrintTree(prop);*/
+            if(null != ltype.EmitContext)
+            {
+                throw new InvalidOperationException("item " + ltype + " already has an emit context.");
+            }
 
-                    if (IsAutomaticProperty(prop))
+            try
+            {
+                CurrentClass = ltype;
+
+                var dsc = (DeclarationSourceContext)ltype.SourceNode;
+                var cls = (ClassDeclarationSyntax)dsc.ClassDeclaration;
+
+                // create emit context
+                var dgc = new DeclarationEmitContext(ltype, dsc);
+                ltype.SetEmitContext(dgc);
+                dgc.OnItemReferenced = ItemReferenced;
+
+                dgc.AddItemReferences();
+
+                // look for automatic properties
+                var autoprops = cls.Members
+                    .OfType<PropertyDeclarationSyntax>()
+                    .Where(IsAutomaticProperty)
+                    .Select(ap => ap.Identifier.ToString());
+
+
+
+                EmitConstructor(dgc, autoprops);
+
+                var classmembers = ltype as IVariableContext;
+
+                // add member methods and properties ...
+                foreach (var member in cls.Members)
+                {
+                    if (member is MethodDeclarationSyntax)
                     {
-                        // automatic property 
-                        EmitAutomaticPropertyAccessors(dgc, prop);
-                    }
-                    else
-                    {
-                        // emit property accessors
-                        foreach (var acc in member.DescendantNodes().OfType<AccessorDeclarationSyntax>())
+                        var method = member as MethodDeclarationSyntax;
+                        var name = method.Identifier.ToString();
+                        var v = classmembers.GetVariable(name);
+                        if (!v.DoNotGenerate)
                         {
-                            if (acc.Keyword.ToString() == "get")
+                            EmitMethod(dgc, method);
+                        }
+                    }
+                    else if (member is PropertyDeclarationSyntax)
+                    {
+                        var prop = (PropertyDeclarationSyntax)member;
+                        var propname = prop.Identifier.ToString();
+
+                        /*Trace("property {0}:", propname);
+                        SyntaxTreeHelper.PrintTree(prop);*/
+
+                        if (IsAutomaticProperty(prop))
+                        {
+                            // automatic property 
+                            EmitAutomaticPropertyAccessors(dgc, prop);
+                        }
+                        else
+                        {
+                            // emit property accessors
+                            foreach (var acc in member.DescendantNodes().OfType<AccessorDeclarationSyntax>())
                             {
-                                EmitGetAccessor(dgc, "get_" + propname, acc.Body);
-                            }
-                            else
-                            {
-                                EmitSetAccessor(dgc, "set_" + propname, acc.Body);
+                                if (acc.Keyword.ToString() == "get")
+                                {
+                                    EmitGetAccessor(dgc, "get_" + propname, acc.Body);
+                                }
+                                else
+                                {
+                                    EmitSetAccessor(dgc, "set_" + propname, acc.Body);
+                                }
                             }
                         }
                     }
-                }
-                else if (member is EventFieldDeclarationSyntax)
-                {
-                    // done LMGMELDMQ7
-                }
-                else if (member is FieldDeclarationSyntax)
-                {
-                    // done LN4NL4H5PI
-                }
-                else if (member is ConstructorDeclarationSyntax)
-                {
-                    // handled before
-                }
-                else if (member is EnumDeclarationSyntax)
-                {
-                    // skip nested
-                }
-                else if (member is ClassDeclarationSyntax)
-                {
-                    // skip nested
-                }
-                else
-                {
-                    Log.Warning("skipped production [{0}] while generating class code.", member.GetType().Name);
-                    SyntaxTreeHelper.PrintTree(member);
+                    else if (member is EventFieldDeclarationSyntax)
+                    {
+                        // done LMGMELDMQ7
+                    }
+                    else if (member is FieldDeclarationSyntax)
+                    {
+                        // done LN4NL4H5PI
+                    }
+                    else if (member is ConstructorDeclarationSyntax)
+                    {
+                        // handled before
+                    }
+                    else if (member is EnumDeclarationSyntax)
+                    {
+                        // skip nested
+                    }
+                    else if (member is ClassDeclarationSyntax)
+                    {
+                        // skip nested
+                    }
+                    else
+                    {
+                        Log.Warning("skipped production [{0}] while generating class code.", member.GetType().Name);
+                        SyntaxTreeHelper.PrintTree(member);
+                    }
                 }
             }
-
-            _output.Add(dgc);
+            finally
+            {
+                CurrentClass = null;
+            }
         }
 
         #endregion
@@ -1008,9 +1095,9 @@ namespace Wpf2Html5
                 }
                 else
                 {
-                    if(Log.ShowScripts)
+                    if (Log.ShowScripts || Log.ShowCodeGeneration)
                     {
-                        Log.Trace("inline native script '{0}' ...", script.Path);
+                        Log.Trace("  inline script '{0}' ...", script.Path);
                     }
 
                     var jsw = new JScriptWriter();
@@ -1020,6 +1107,23 @@ namespace Wpf2Html5
                     }
 
                     RewriteDeclaration(jsw);
+                }
+            }
+        }
+
+        private void EmitNativeScripts(ITypeItem ltype)
+        {
+            if(Log.ShowCodeGeneration)
+            {
+                Log.Trace("emit native [" + ltype.ID + "] ...");
+            }
+
+            foreach(var script in ltype.ScriptReferences)
+            {
+                if(!_nativescripts.Contains(script.Key))
+                {
+                    _nativescripts.Add(script.Key);
+                    EmitNativeScript(script);
                 }
             }
         }

@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<profile script-assembly="Wpf2Html5.StockObjects" script-path="Scripts">
+  <source namespace="Wpf2Html5.StockObjects" assembly="Wpf2Html5.StockObjects" >
+    <type name="PathOperations" />
+    <type name="StringOperations" />
+    <type name="StringValidation" />
+    <type name="JsonWebRequest" />
+    <type name="ListUtility`1" />
+    <type name="JsonObjectFactory`1" />
+  </source>
+  <source namespace="Wpf2Html5.StockObjects" assembly="Wpf2Html5.StockObjects" >
+    <type name="RelayCommand" />
+    <type name="PleaseWaitControl" />
+    <type name="BorderWithMouse" />
+  </source>
+</profile>

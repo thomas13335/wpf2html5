@@ -48,10 +48,20 @@ namespace Wpf2Html5.TypeSystem.Interface
         /// </summary>
         bool DoNotGenerate { get; }
 
+        #region Dependencies
+
         /// <summary>
         /// Collection of items this item depends on.
         /// </summary>
-        IEnumerable<ITypeItem> Dependencies { get; }
+        IEnumerable<IDependency> Dependencies { get; }
+
+        /// <summary>
+        /// Adds a type dependency.
+        /// </summary>
+        /// <param name="target">The referenced type item.</param>
+        void AddDepdendency(ITypeItem target, DependencyLevel level);
+
+        #endregion
 
         /// <summary>
         /// The code generation status.
@@ -78,10 +88,13 @@ namespace Wpf2Html5.TypeSystem.Interface
         /// </summary>
         object SourceNode { get; }
 
+        object EmitContext { get; }
+
         /// <summary>
         /// The translated code name to be used in the target language.
         /// </summary>
         string CodeName { get; }
+
 
         void SetDoNotGenerate();
 
@@ -104,6 +117,19 @@ namespace Wpf2Html5.TypeSystem.Interface
         void SetDisableTranslation(params string[] members);
 
         /// <summary>
+        /// Sets the source code for the item.
+        /// </summary>
+        /// <param name="astitem">The corresponding abstract syntax tree item.</param>
+        /// <remarks>This changes the state of the item to 'source' if successful.</remarks>
+        void SetSourceNode(object astitem);
+
+        /// <summary>
+        /// Sets the emit context for the item.
+        /// </summary>
+        /// <param name="ec"></param>
+        void SetEmitContext(object ec);
+
+        /// <summary>
         /// Returns a member of a class or native type.
         /// </summary>
         /// <param name="name">The case sensitive name of the member.</param>
@@ -116,13 +142,6 @@ namespace Wpf2Html5.TypeSystem.Interface
         /// Returns a collection of members of this item.
         /// </summary>
         IEnumerable<ITypeItem> Members { get; }
-
-        /// <summary>
-        /// Sets the source code for the item.
-        /// </summary>
-        /// <param name="astitem">The corresponding abstract syntax tree item.</param>
-        /// <remarks>This changes the state of the item to 'source' if successful.</remarks>
-        void SetSourceNode(object astitem);
 
         ITypeItem GetConvertMethod();
 
@@ -161,13 +180,6 @@ namespace Wpf2Html5.TypeSystem.Interface
         ITypeItem ResolveLType(string name);
 
         /// <summary>
-        /// Adds a type dependency.
-        /// </summary>
-        /// <param name="dependent">The dependent type item.</param>
-        /// <param name="target">The referenced type item.</param>
-        void AddDepdendency(ITypeItem dependent, ITypeItem target);
-
-        /// <summary>
         /// Registers a logical type item in this context.
         /// </summary>
         /// <param name="ltype">The logical type object.</param>
@@ -190,7 +202,7 @@ namespace Wpf2Html5.TypeSystem.Interface
         /// Returns the item representing the variable or method given a name.
         /// </summary>
         /// <param name="name">The name of the item.</param>
-        /// <returns></returns>
+        /// <returns>The item if found, null otherwise.</returns>
         ITypeItem GetVariable(string name);
 
         /// <summary>
@@ -252,5 +264,12 @@ namespace Wpf2Html5.TypeSystem.Interface
     public interface IMethodContext : IDeclarationContext, IDebugContext
     {
 
+    }
+
+    public interface IDependency
+    {
+        ITypeItem Target { get; }
+
+        DependencyLevel Level { get; }
     }
 }

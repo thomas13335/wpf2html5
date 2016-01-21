@@ -47,7 +47,11 @@ namespace Wpf2Html5.Utility
                 Log.ShowVerbose = Flags.Verbose;
                 Log.ShowConverterModel = Flags.ShowFiles;
                 Log.ShowResources = Flags.ShowResources;
-                Log.ShowClassDependencies = Flags.ShowClasses;
+
+                if (Flags.ShowClasses)
+                {
+                    Log.ShowClassDependencies = Flags.ShowClasses;
+                }
             }
 
             // setting the project property triggers the conversion process

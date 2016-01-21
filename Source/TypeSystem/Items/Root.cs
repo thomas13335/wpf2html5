@@ -20,7 +20,7 @@ namespace Wpf2Html5.TypeSystem.Items
     {
         #region Private
 
-        private List<ScriptReference> _scriptrefs = new List<ScriptReference>();
+        private List<IScriptReference> _scriptrefs = new List<IScriptReference>();
 
         #endregion
 
@@ -140,9 +140,17 @@ namespace Wpf2Html5.TypeSystem.Items
             // special methods
             AddVariable(new Method(this, "trace", null));
 
+            var x = typeof(ICommand);
+            var u = typeof(DependencyObject);
+            var q = typeof(DataTemplate);
+
             var loader = new ProfileLoader(this);
+            loader.LoadResource("Wpf2Html5.Embedding");
             loader.LoadResource("System");
             loader.LoadResource("System.Collections.Generic");
+            loader.LoadResource("System.Windows");
+            loader.LoadResource("Wpf2Html5.StockObjects");
+
 
             var c = typeof(ICommand);
 
@@ -178,6 +186,11 @@ namespace Wpf2Html5.TypeSystem.Items
 #endif
 
             Trace("type system initialized.");
+        }
+
+        public override void AddScriptReference(Assembly assembly, string path)
+        {
+            _scriptrefs.Add(new ScriptReference(assembly, path));
         }
 
         #endregion

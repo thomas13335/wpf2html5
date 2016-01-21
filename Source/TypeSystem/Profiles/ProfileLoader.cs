@@ -19,6 +19,7 @@ namespace Wpf2Html5.TypeSystem.Profiles
         private enum State { initial, source, profile, type };
 
         #region Properties
+        public ITypeRoot Context { get; private set; }
 
         public string AssemblyName { get; private set; }
 
@@ -28,9 +29,9 @@ namespace Wpf2Html5.TypeSystem.Profiles
 
         public string Namespace { get; private set; }
 
-        public IDeclarationContext Context { get; private set; }
-
         public string TypeName { get; private set; }
+
+        public string BaseTypeName { get; private set; }
 
         public ITypeItem LType { get; private set; }
 
@@ -38,7 +39,7 @@ namespace Wpf2Html5.TypeSystem.Profiles
 
         #region Construction
 
-        public ProfileLoader(IDeclarationContext context)
+        public ProfileLoader(ITypeRoot context)
         {
             Context = context;
         }
@@ -103,6 +104,7 @@ namespace Wpf2Html5.TypeSystem.Profiles
                         {
                             Namespace = reader.GetAttribute("namespace");
                             AssemblyName = reader.GetAttribute("assembly") ?? "mscorlib";
+                            BaseTypeName = reader.GetAttribute("base");
 
                             s = State.source;
                         }
@@ -117,7 +119,16 @@ namespace Wpf2Html5.TypeSystem.Profiles
                         {
                             TypeName = reader.GetAttribute("name");
 
+                            var oldbase = BaseTypeName;
+                            var z = reader.GetAttribute("base");
+                            if (null != z)
+                            {
+                                BaseTypeName = z;
+                            }
+
                             InstallType();
+
+                            BaseTypeName = oldbase;
 
                             if (reader.IsStartElement() && !reader.IsEmptyElement)
                             {
@@ -125,6 +136,7 @@ namespace Wpf2Html5.TypeSystem.Profiles
                             }
                             else
                             {
+                                InstallTypeScript();
                                 LType = null;
                             }
                         }
@@ -136,6 +148,10 @@ namespace Wpf2Html5.TypeSystem.Profiles
                     else if (reader.LocalName == "script")
                     {
                         if (s == State.type)
+                        {
+                            InstallScript(reader.GetAttribute("name"), true);
+                        }
+                        else if(s == State.source)
                         {
                             InstallScript(reader.GetAttribute("name"), true);
                         }
@@ -161,6 +177,7 @@ namespace Wpf2Html5.TypeSystem.Profiles
                     }
                     else if (s == State.type)
                     {
+                        InstallTypeScript();
                         LType = null;
                         s = State.source;
                     }
@@ -208,31 +225,63 @@ namespace Wpf2Html5.TypeSystem.Profiles
                             throw new Exception("script '" + path + "' was not found in " + asm.GetName().Name + ".");
                         }
                     }
-                    else
+                    else if(null != LType)
                     {
                         Trace("  referencing script '" + path + "'.");
                         LType.AddScriptReference(asm, scriptpath);
+                    }
+                    else
+                    {
+                        Trace("referencing script '" + path + "'.");
+                        Context.AddScriptReference(asm, scriptpath);
                     }
                 }
             }
         }
 
-        private void InstallType()
+        private Type Lookup(string name)
         {
             var asm = GetAssembly(AssemblyName);
-            var fullname = Namespace + "." + TypeName;
+            var fullname = name;
+            if (!name.Contains('.'))
+            {
+                fullname = Namespace + "." + name;
+            }
+
             var rtype = asm.GetType(fullname);
 
-            if(null == rtype)
+            if (null == rtype)
             {
                 throw new UnresolvedTypeException("type '" + fullname + "' could not be resolved in " + AssemblyName + ".");
             }
 
+            return rtype;
+        }
+
+        private void InstallType()
+        {
+            var rtype = Lookup(TypeName);
+
             Trace("constructing {0} ...", rtype.FullName);
 
+            Type rbase = null;
+            if(null != BaseTypeName)
+            {
+                rbase = Lookup(BaseTypeName);
+            }
+
+            if(null != rbase && rbase.FullName == rtype.FullName)
+            {
+                rbase = null;
+            }
+
             // registers itself
-            LType = new NativeTypeRef(Context, rtype, true);
-            var rawname = rtype.Name.Split('`').First();
+            LType = new NativeTypeRef(Context, rtype, true, rbase);
+        }
+
+        private void InstallTypeScript()
+        {
+            var rawname = LType.RType.Name.Split('`').First();
             InstallScript(rawname, false);
         }
 

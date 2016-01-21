@@ -86,8 +86,14 @@ namespace Wpf2Html5.TypeSystem.Items
                 GStatus = TypeGenerationStatus.cloaked;
                 return true;
             }
-
-            return false;
+            else if (GStatus == TypeGenerationStatus.cloaked)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         /*private ITypeItem TranslateArgument(Type rtype)

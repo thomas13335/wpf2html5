@@ -48,14 +48,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Collections\GenericInterfaceEnumerator.cs" />
+    <Compile Include="Comparers\DependencyEqualityComparer.cs" />
+    <Compile Include="Comparers\TypeItemEqualityComparer.cs" />
     <Compile Include="Exceptions\MalformedConfigurationException.cs" />
+    <Compile Include="Exceptions\UnresolvedMemberException.cs" />
     <Compile Include="Exceptions\UnresolvedTypeException.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="Interface\DependencyLevel.cs" />
     <Compile Include="Interface\Interfaces.cs" />
     <Compile Include="Interface\TypeGenerationStatus.cs" />
     <Compile Include="Items\Class.cs" />
     <Compile Include="Items\Constant.cs" />
     <Compile Include="Items\Container.cs" />
+    <Compile Include="Items\Dependency.cs" />
     <Compile Include="Items\Enumeration.cs" />
     <Compile Include="Collections\ItemsCollection.cs" />
     <Compile Include="Items\Field.cs" />
@@ -95,7 +100,15 @@
     <EmbeddedResource Include="Profiles\System.Collections.Generic.xml" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Profiles\System.Windows.xml" />
+    <EmbeddedResource Include="Profiles\System.Windows.xml">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Profiles\Wpf2Html5.StockObjects.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Profiles\Wpf2Html5.Embedding.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

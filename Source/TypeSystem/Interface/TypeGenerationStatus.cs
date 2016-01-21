@@ -33,6 +33,7 @@ namespace Wpf2Html5.TypeSystem.Interface
         /// <summary>
         /// Don't convert this item.
         /// </summary>
-        cloaked
+        cloaked,
+        preparing
     }
 }

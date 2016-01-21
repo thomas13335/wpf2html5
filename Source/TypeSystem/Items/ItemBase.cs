@@ -2,16 +2,22 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Wpf2Html5.TypeSystem;
+using Wpf2Html5.TypeSystem.Comparers;
 using Wpf2Html5.TypeSystem.Interface;
 
 namespace Wpf2Html5.TypeSystem.Items
 {
     abstract class ItemBase : ITypeItem
     {
-        protected string _id;
+        #region Private
+
+        private string _id;
         private Type _rtype;
-        protected IDeclarationContext _parent;
+        private IDeclarationContext _parent;
         private object _astitem;
+        private HashSet<IDependency> _dependencies = new HashSet<IDependency>(new DependencyEqualityComparer());
+
+        #endregion
 
         #region Properties
 
@@ -25,6 +31,8 @@ namespace Wpf2Html5.TypeSystem.Items
         public virtual bool IsClass { get { return false; } }
 
         public virtual object SourceNode { get { return _astitem; } }
+
+        public object EmitContext { get; private set; }
 
         public virtual string CodeName
         {
@@ -66,7 +74,7 @@ namespace Wpf2Html5.TypeSystem.Items
             }
         }
 
-        public virtual IEnumerable<ITypeItem> Dependencies { get { return new ITypeItem[0]; } }
+        public virtual IEnumerable<IDependency> Dependencies { get { return _dependencies; } }
 
         public virtual IEnumerable<ITypeItem> Members { get { yield break; } }
 
@@ -167,6 +175,19 @@ namespace Wpf2Html5.TypeSystem.Items
             }
         }
 
+        public void SetEmitContext(object ec)
+        {
+            if (GStatus == TypeGenerationStatus.convert)
+            {
+                EmitContext = ec;
+            }
+            else
+            {
+                throw new InvalidOperationException("object " + this
+                    + " is not in convert state, cannot associated emit.");
+            }
+        }
+
         public virtual void SetExternal()
         {
             if (GStatus == TypeGenerationStatus.initial)
@@ -206,6 +227,18 @@ namespace Wpf2Html5.TypeSystem.Items
         public virtual void AddScriptReference(Assembly assembly, string path)
         {
             throw new NotImplementedException();
+        }
+
+        public virtual void AddDepdendency(ITypeItem target, DependencyLevel level)
+        {
+            if (target.ID != ID)
+            {
+                var d = new Dependency(target, level);
+                if (!_dependencies.Contains(d))
+                {
+                    _dependencies.Add(d);
+                }
+            }
         }
     }
 }

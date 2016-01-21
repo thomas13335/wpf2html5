@@ -543,6 +543,7 @@ namespace Wpf2Html5.Converter.Framework
 
         public void TriggerItemReference(string typename)
         {
+            Context.TriggerItemReference(typeof(DataTemplate).FullName);
             Context.TriggerItemReference(typename);
         }
 

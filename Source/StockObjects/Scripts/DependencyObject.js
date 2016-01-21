@@ -2,6 +2,16 @@
 var dpobjseed = 0;
 var handlerindex = 0;
 
+function DependencyPropertyChangedEventArgs(prop, oldvalue, newvalue) {
+    this.Property = prop;
+    this.OldValue = oldvalue;
+    this.NewValue = newvalue;
+}
+
+DependencyPropertyChangedEventArgs.prototype.get_Property = function () { return this.Property; }
+DependencyPropertyChangedEventArgs.prototype.get_OldValue = function () { return this.OldValue; }
+DependencyPropertyChangedEventArgs.prototype.get_NewValue = function () { return this.NewValue; }
+
 function DependencyObject(type) {
     this.$type = type;
     this.__bindings = [];
@@ -56,7 +66,7 @@ DependencyObject.prototype.SetValue = function (prop, value) {
     }
 
     // capture transition event
-    var eargs = { Property: prop, OldValue: previousvalue, NewValue: value };
+    var eargs = new DependencyPropertyChangedEventArgs(prop, previousvalue, value);
 
     // TODO: coerce
 

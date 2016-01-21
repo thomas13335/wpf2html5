@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Wpf2Html5.Exceptions;
 using Wpf2Html5.TypeSystem.Interface;
 
 namespace Wpf2Html5.TypeSystem.Items
@@ -17,6 +18,7 @@ namespace Wpf2Html5.TypeSystem.Items
         private SortedSet<string> _untranslatedmembers = new SortedSet<string>();
         private List<ScriptReference> _scriptrefs = new List<ScriptReference>();
         private bool _isdelegate;
+        private ITypeItem _lbase;
 
         #endregion
 
@@ -35,11 +37,13 @@ namespace Wpf2Html5.TypeSystem.Items
             get { return true; }
         }
 
+        public override ITypeItem BaseType { get { return _lbase; } }
+
         #endregion
 
         #region Construction
 
-        public NativeTypeRef(IDeclarationContext parent, Type type, bool external = false)
+        public NativeTypeRef(IDeclarationContext parent, Type type, bool external = false, Type redirectbase = null)
             : base(parent, type)
         {
             if(null == type)
@@ -52,16 +56,21 @@ namespace Wpf2Html5.TypeSystem.Items
                 SetExternal();
             }
 
-            var basetype = type;
-            while (null != basetype)
+            if(type.IsSubclassOf(typeof(Delegate)))
             {
-                if (basetype.FullName == "System.Delegate")
+                _isdelegate = true;
+            }
+            else if (!type.IsValueType)
+            {
+                var rbase = redirectbase ?? type.BaseType;
+                if (null != rbase)
                 {
-                    _isdelegate = true;
-                    break;
-                }
+                    _lbase = parent.TranslateRType(rbase, TranslateOptions.Add);
+                    //_typedependencies.Add(lbase);
+                    AddDepdendency(_lbase, DependencyLevel.Constructor);
 
-                basetype = basetype.BaseType;
+                    _isdelegate = _lbase.IsDelegate;
+                }
             }
 
             parent.RegisterType(this);
@@ -97,8 +106,11 @@ namespace Wpf2Html5.TypeSystem.Items
             }
 
             var memberinfo = GetMemberRecurse(RType, name);
-
-            if (memberinfo.MemberType == MemberTypes.Method)
+            if (null == memberinfo)
+            {
+                return null;
+            }
+            else if (memberinfo.MemberType == MemberTypes.Method)
             {
                 var methodinfo = (MethodInfo)memberinfo;
                 var rettype = methodinfo.ReturnType;
@@ -119,7 +131,7 @@ namespace Wpf2Html5.TypeSystem.Items
             }
             else
             {
-                throw new NotImplementedException("type item [" + memberinfo.MemberType + "] cannot be translated.");
+                throw new UnresolvedMemberException("type item [" + memberinfo.MemberType + "] cannot be translated.");
             }
         }
 
