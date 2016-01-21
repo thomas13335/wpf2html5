@@ -1,0 +1,90 @@
+﻿body
+{
+    width: 99%;
+    font-family: 'Segoe UI', arial;
+    padding: 0px;
+    margin: 0px;
+    display: block;
+}
+
+p {
+    cursor: default;
+}
+
+/* AYONL7EOWG: delayed display of CWVYGXULNX. */
+#idbody {
+    display: none;
+}
+
+#idbody.load  {
+    display: block;
+}
+
+/* AGFPYOIAPG: WPF HyperLink style */
+.hyperlink { /*text-decoration: underline; color: blue; */
+    cursor: pointer;
+}
+
+button>img { padding: 0px; vertical-align: middle; }
+
+.stackpanel-vertical { display: block; }
+.stackpanel-vertical > SPAN.stackitem { display: block; }
+.stackpanel-vertical > BUTTON.stackitem { display: block; width: 100%; }
+.stackpanel-vertical > DIV.stackitem { display: block; width: 100%; }
+
+.stackpanel-horizontal { display: table-row; }
+.stackpanel-horizontal > SPAN.stackitem { display: table-cell;  }
+.stackpanel-horizontal > BUTTON.stackitem { display: table-cell;  }
+.stackpanel-horizontal > IMG.stackitem { display: inline-block; }
+.stackpanel-horizontal > .stackitem { display: table-cell; }
+
+.dockpanel-vertical { display:flexbox; }
+.dockpanel-vertical .stretch { display: flexbox; }
+.dockpanel-vertical .dockitem { display: block; }
+
+.dockpanel-horizontal { display: table; border: 0pt solid green; }
+.dockpanel-horizontal .dockitem { display: table-cell; vertical-align: middle; }
+.dockpanel-horizontal .stretch { width: 100%; }
+.dockpanel-horizontal .dockitem .textbox { display: inline; width: 96%; }
+
+.grid { width: 100%; height: 100%; }
+
+.griditem { overflow: scroll; }
+
+.htmliframe {
+    border: 0pt solid black;
+}
+
+
+/* TODO: move to application.css */
+
+.pathcontent { margin: 4px; height: 30px; padding-top: 5px; }
+.pathelement { background: aliceblue; border: 1px solid blue; padding: 3px; border-radius: 2px; margin-right: 5px; cursor: pointer;  }
+.pathseparator { display: none; }
+
+
+.appdlink {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-size: 12pt;
+}
+
+
+
+
+
+
+.O7FBAUBD3T {
+    padding: 5px;
+    border-radius: 4px;
+    background: blue;
+    color: white;
+}
+
+.ZFLECO4DC1 {
+}
+
+.ZFLECO4DC2 { 
+    float: left;
+}
+

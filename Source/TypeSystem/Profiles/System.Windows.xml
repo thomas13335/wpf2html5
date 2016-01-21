@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<profile script-assembly="Wpf2Html5.StockObjects" script-path="Scripts">
+  <source namespace="System.Windows.Input" >
+    <type name="ICommand" />
+  </source>
+</profile>

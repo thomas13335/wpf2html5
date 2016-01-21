@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<profile script-assembly="Wpf2Html5.StockObjects" script-path="Scripts">
+  <source namespace="System.Collections.Generic" >
+    <type name="IList`1" />
+    <type name="List`1" >
+      <script name="ArrayEnumerator" />
+    </type>
+    <type name="IEnumerable`1" />
+    <type name="IEnumerator`1" />
+    <type name="IDictionary`2" />
+    <type name="Dictionary`2" />
+  </source>
+  <source namespace="System.Collections.ObjectModel" assembly="System" >
+    <type name="ObservableCollection`1" />
+  </source>
+</profile>

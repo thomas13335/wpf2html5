@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<profile>
+  <source namespace="System" >
+    <type name="Object" />
+    <type name="String" />
+    <type name="Boolean" />
+    <type name="Int32" />
+    <type name="EventHandler" />
+    <type name="EventArgs" />
+    <type name="Action`1" />
+  </source>
+</profile>
